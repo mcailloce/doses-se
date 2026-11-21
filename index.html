@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doses SE</title>
+<meta name="theme-color" content="#0f3d5e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#f3f6f9; --card:#fff; --ink:#14212b; --muted:#5d6d7a; --line:#d9e1e8;
+    --accent:#0f3d5e; --accent2:#1f6fa8; --hl:#e6f1fa; --ok:#0b7a4b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f161c; --card:#18222b; --ink:#e7eef4; --muted:#93a4b2; --line:#2a3946;
+      --accent:#5fb0ea; --accent2:#5fb0ea; --hl:#1d3244; --ok:#4fd19a; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+    padding:env(safe-area-inset-top) 0 calc(24px + env(safe-area-inset-bottom));}
+  header{background:#0f3d5e;color:#fff;padding:14px 16px;font-weight:700;font-size:1.15rem;letter-spacing:.2px}
+  header small{font-weight:400;opacity:.8;font-size:.8rem;margin-left:6px}
+  main{max-width:560px;margin:0 auto;padding:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 10px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:8px 13px;font-size:.95rem;cursor:pointer}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  @media (prefers-color-scheme: dark){ .chip.on{color:#0f161c} }
+  .presets{margin-top:10px}
+  .presets:empty{display:none}
+  .row{display:flex;gap:10px;align-items:flex-end;margin-bottom:10px}
+  .row:last-child{margin-bottom:0}
+  label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+  .f{flex:1;min-width:0}
+  input,select{width:100%;font-size:1.25rem;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+  input:focus,select:focus{outline:2px solid var(--accent2);border-color:transparent}
+  .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-shrink:0}
+  .seg button{border:0;background:transparent;color:var(--ink);padding:11px 14px;font-size:1rem;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  @media (prefers-color-scheme: dark){ .seg button.on{color:#0f161c} }
+  .mode{display:flex;width:100%}
+  .mode button{flex:1}
+  .conc{font-size:.95rem;color:var(--muted);margin-top:8px}
+  .conc b{color:var(--ink)}
+  .big{font-size:2rem;font-weight:700;color:var(--ok);margin:4px 0 2px}
+  .big span{font-size:1.1rem;font-weight:600;margin-left:4px}
+  table{width:100%;border-collapse:collapse}
+  td{padding:9px 4px;border-bottom:1px solid var(--line);font-size:1.05rem}
+  tr:last-child td{border-bottom:0}
+  td.v{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  td.u{color:var(--muted);width:42%;padding-left:10px}
+  tr.hl td{background:var(--hl)}
+  .msg{color:var(--muted);font-size:.95rem}
+  .reset{display:block;width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:1rem}
+  .foot{font-size:.75rem;color:var(--muted);text-align:center;margin-top:8px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>Doses SE <small>conversion débit ⇄ dose</small></header>
+<main>
+
+  <section class="card">
+    <h2>Médicament</h2>
+    <div class="chips" id="drugs"></div>
+    <div class="chips presets" id="presets"></div>
+  </section>
+
+  <section class="card">
+    <h2>Patient et seringue</h2>
+    <div class="row">
+      <div class="f"><label for="poids">Poids (kg)</label>
+        <input id="poids" inputmode="decimal" autocomplete="off" placeholder="ex. 70"></div>
+    </div>
+    <div class="row">
+      <div class="f"><label for="qte">Quantité de médicament</label>
+        <input id="qte" inputmode="decimal" autocomplete="off" placeholder="ex. 8"></div>
+      <div class="seg" id="qteUnit">
+        <button data-u="mg" class="on">mg</button><button data-u="µg">µg</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="f"><label for="vol">Volume de la seringue (mL)</label>
+        <input id="vol" inputmode="decimal" autocomplete="off" placeholder="ex. 50"></div>
+    </div>
+    <div class="conc" id="conc"></div>
+  </section>
+
+  <section class="card">
+    <div class="seg mode" id="mode">
+      <button data-m="dose" class="on">Débit → Dose</button>
+      <button data-m="debit">Dose → Débit</button>
+    </div>
+  </section>
+
+  <section class="card" id="cardA">
+    <div class="row">
+      <div class="f"><label for="debit">Débit de la seringue (mL/h)</label>
+        <input id="debit" inputmode="decimal" autocomplete="off" placeholder="ex. 5"></div>
+    </div>
+    <div id="resA"></div>
+  </section>
+
+  <section class="card hidden" id="cardB">
+    <div class="row">
+      <div class="f"><label for="cible">Dose souhaitée</label>
+        <input id="cible" inputmode="decimal" autocomplete="off" placeholder="ex. 0,1"></div>
+      <div style="width:44%"><label for="cibleU">Unité</label>
+        <select id="cibleU"></select></div>
+    </div>
+    <div id="resB"></div>
+  </section>
+
+  <button class="reset" id="reset">Effacer</button>
+  <p class="foot">Aide au calcul — vérifier systématiquement la concentration affichée.</p>
+</main>
+
+<script>
+"use strict";
+// ---------- Données ----------
+const DRUGS = [
+  {id:"libre", name:"Libre", unit:"µg/kg/min", presets:[]},
+  {id:"nad", name:"Noradrénaline", unit:"µg/kg/min",
+    presets:[[8,"mg",50],[16,"mg",50],[32,"mg",50],[40,"mg",50],[48,"mg",50]]},
+  {id:"adr", name:"Adrénaline", unit:"µg/kg/min", presets:[]},
+  {id:"dobu", name:"Dobutamine", unit:"µg/kg/min", presets:[[250,"mg",50]]},
+  {id:"iso", name:"Isoprénaline", unit:"µg/kg/min", presets:[[1,"mg",50]]},
+  {id:"dex", name:"Dexdor", unit:"µg/kg/h", presets:[[400,"µg",50]]},
+];
+// Unités de dose : facteur de conversion vers µg/h
+// k = nécessite le poids ; f = multiplicateur (hors poids)
+const UNITS = [
+  {u:"µg/kg/min", k:true,  f:60},
+  {u:"µg/kg/h",   k:true,  f:1},
+  {u:"mg/kg/h",   k:true,  f:1000},
+  {u:"µg/min",    k:false, f:60},
+  {u:"µg/h",      k:false, f:1},
+  {u:"mg/h",      k:false, f:1000},
+];
+const unitOf = u => UNITS.find(x => x.u === u);
+const toUgH   = (v, u, w) => { const d = unitOf(u); return v * d.f * (d.k ? w : 1); };
+const fromUgH = (v, u, w) => { const d = unitOf(u); return v / d.f / (d.k ? w : 1); };
+
+// ---------- État ----------
+const S = { drug:"libre", qteUnit:"mg", mode:"dose", cibleU:"µg/kg/min",
+            poids:"", qte:"", vol:"", debit:"", cible:"" };
+try { Object.assign(S, JSON.parse(localStorage.getItem("dosesSE") || "{}")); } catch(e){}
+const save = () => { try { localStorage.setItem("dosesSE", JSON.stringify(S)); } catch(e){} };
+
+// ---------- Outils ----------
+const $ = id => document.getElementById(id);
+const num = s => { const x = parseFloat(String(s).replace(",", ".").replace(/\s/g,"")); return isFinite(x) ? x : NaN; };
+function fmt(x){
+  if (!isFinite(x)) return "—";
+  const a = Math.abs(x);
+  const o = a >= 100 ? {maximumFractionDigits:1}
+          : a >= 1   ? {maximumFractionDigits:2}
+          : a === 0  ? {maximumFractionDigits:0}
+          : {maximumSignificantDigits:3};
+  return x.toLocaleString("fr-FR", o);
+}
+
+// ---------- Rendu ----------
+function renderDrugs(){
+  $("drugs").innerHTML = DRUGS.map(d =>
+    `<button class="chip ${d.id===S.drug?"on":""}" data-d="${d.id}">${d.name}</button>`).join("");
+  const d = DRUGS.find(x => x.id === S.drug);
+  $("presets").innerHTML = d.presets.map(p => {
+    const on = num(S.qte) === p[0] && S.qteUnit === p[1] && num(S.vol) === p[2];
+    return `<button class="chip ${on?"on":""}" data-p="${p.join("|")}">${fmt(p[0])} ${p[1]} / ${p[2]} mL</button>`;
+  }).join("");
+}
+function renderStatic(){
+  $("poids").value = S.poids; $("qte").value = S.qte; $("vol").value = S.vol;
+  $("debit").value = S.debit; $("cible").value = S.cible;
+  $("cibleU").innerHTML = UNITS.map(x => `<option ${x.u===S.cibleU?"selected":""}>${x.u}</option>`).join("");
+  [...$("qteUnit").children].forEach(b => b.classList.toggle("on", b.dataset.u === S.qteUnit));
+  [...$("mode").children].forEach(b => b.classList.toggle("on", b.dataset.m === S.mode));
+  $("cardA").classList.toggle("hidden", S.mode !== "dose");
+  $("cardB").classList.toggle("hidden", S.mode !== "debit");
+  renderDrugs();
+}
+function table(ugH, w, hlUnit){
+  return "<table>" + UNITS.map(x => {
+    const v = x.k && !(w > 0) ? NaN : fromUgH(ugH, x.u, w);
+    return `<tr class="${x.u===hlUnit?"hl":""}"><td class="v">${x.k && !(w>0) ? "poids ?" : fmt(v)}</td><td class="u">${x.u}</td></tr>`;
+  }).join("") + "</table>";
+}
+function compute(){
+  const w = num(S.poids), q = num(S.qte), vol = num(S.vol);
+  const qUg = S.qteUnit === "mg" ? q * 1000 : q;
+  const c = qUg / vol; // µg/mL
+  const okC = q > 0 && vol > 0;
+  $("conc").innerHTML = okC
+    ? `Concentration : <b>${fmt(c/1000)} mg/mL</b> = <b>${fmt(c)} µg/mL</b>`
+    : "Concentration : renseigner quantité et volume";
+  const hl = DRUGS.find(x => x.id === S.drug).unit;
+
+  // Mode A : débit -> dose
+  const r = num(S.debit);
+  if (!okC)           $("resA").innerHTML = "";
+  else if (!(r >= 0)) $("resA").innerHTML = `<p class="msg">Saisir le débit en mL/h.</p>`;
+  else                $("resA").innerHTML = table(r * c, w, hl);
+
+  // Mode B : dose -> débit
+  const t = num(S.cible), needW = unitOf(S.cibleU).k;
+  if (!okC) $("resB").innerHTML = "";
+  else if (!(t >= 0)) $("resB").innerHTML = `<p class="msg">Saisir la dose souhaitée.</p>`;
+  else if (needW && !(w > 0)) $("resB").innerHTML = `<p class="msg">Saisir le poids pour une dose en ${S.cibleU}.</p>`;
+  else {
+    const ugH = toUgH(t, S.cibleU, w);
+    $("resB").innerHTML = `<label>Débit à programmer</label><div class="big">${fmt(ugH / c)}<span>mL/h</span></div>
+      <h2 style="margin-top:12px">Équivalences</h2>` + table(ugH, w, S.cibleU);
+  }
+  save();
+}
+
+// ---------- Événements ----------
+$("drugs").addEventListener("click", e => {
+  const b = e.target.closest("[data-d]"); if (!b) return;
+  S.drug = b.dataset.d;
+  const d = DRUGS.find(x => x.id === S.drug);
+  S.cibleU = d.unit;
+  if (d.presets.length === 1) { [S.qte, S.qteUnit, S.vol] = d.presets[0].map(String); }
+  else if (d.presets.length === 0) { S.qte = ""; S.vol = ""; }
+  renderStatic(); compute();
+});
+$("presets").addEventListener("click", e => {
+  const b = e.target.closest("[data-p]"); if (!b) return;
+  const [q,u,v] = b.dataset.p.split("|"); S.qte = q; S.qteUnit = u; S.vol = v;
+  renderStatic(); compute();
+});
+$("qteUnit").addEventListener("click", e => {
+  const b = e.target.closest("[data-u]"); if (!b) return;
+  S.qteUnit = b.dataset.u; renderStatic(); compute();
+});
+$("mode").addEventListener("click", e => {
+  const b = e.target.closest("[data-m]"); if (!b) return;
+  S.mode = b.dataset.m; renderStatic(); compute();
+});
+["poids","qte","vol","debit","cible"].forEach(id =>
+  $(id).addEventListener("input", e => { S[id] = e.target.value; if (id==="qte"||id==="vol") renderDrugs(); compute(); }));
+$("cibleU").addEventListener("change", e => { S.cibleU = e.target.value; compute(); });
+$("reset").addEventListener("click", () => {
+  Object.assign(S, {drug:"libre", qteUnit:"mg", cibleU:"µg/kg/min", poids:"", qte:"", vol:"", debit:"", cible:""});
+  renderStatic(); compute();
+});
+
+renderStatic(); compute();
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
